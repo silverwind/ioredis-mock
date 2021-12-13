@@ -1,3 +1,4 @@
+import Redis from 'ioredis';
 import command from '../src/command';
 
 describe('basic command', () => {
@@ -29,4 +30,56 @@ describe('basic command', () => {
   it.todo(
     'should reject the promise if the first argument is bool false to allow simulating failures'
   );
+});
+
+describe('transformers', () => {
+  it('should support setReplyTransformer', async () => {
+    const redis = new Redis();
+    Redis.Command.setReplyTransformer('hgetall', result => Object.entries(result));
+    await redis.hset('replytest', 'bar', 'baz');
+    await redis.hset('replytest', 'baz', 'quz');
+    expect(await redis.hgetall('replytest')).toEqual([['bar', 'baz'], ['baz', 'quz']]);
+    delete Redis.Command.transformers.reply.hgetall;
+  });
+
+  it('should support setArgumentTransformer', async () => {
+    const redis = new Redis();
+
+    function convertMapToArray(map) {
+      const result = [];
+      let pos = 0;
+      map.forEach((value, key) => {
+        result[pos] = key;
+        result[pos + 1] = value;
+        pos += 2;
+      });
+      return result;
+    }
+
+    function convertObjectToArray(obj) {
+      const result = [];
+      const keys = Object.keys(obj);
+
+      for (let i = 0, l = keys.length; i < l; i++) {
+        result.push(keys[i], obj[keys[i]]);
+      }
+      return result;
+    }
+
+    Redis.Command.setArgumentTransformer('hmset', args => {
+      if (args.length === 2) {
+        if (typeof Map !== 'undefined' && args[1] instanceof Map) {
+          return [args[0]].concat(convertMapToArray(args[1]))
+        }
+        if (typeof args[1] === 'object' && args[1] !== null) {
+          return [args[0]].concat(convertObjectToArray(args[1]))
+        }
+      }
+      return args;
+    })
+
+    await redis.hmset('argtest', { k1: 'v1', k2: 'v2' });
+    expect(await redis.hgetall('argtest')).toEqual({ k1: 'v1', k2: 'v2' });
+    delete Redis.Command.transformers.argument.hmset;
+  })
 });
