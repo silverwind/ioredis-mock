@@ -88,7 +88,14 @@ export function processArguments(args, commandName) {
 
 export function processReply(result, commandName) {
   if (Command.transformers.reply[commandName]) {
-    return Command.transformers.reply[commandName](result);
+    // ioredis' reply transformer seems to receive array of arrays for
+    // the hgetall command, emulate this
+    let newResult = result;
+    if (commandName === 'hgetall') {
+      newResult = _.flatten(Object.entries(result));
+    }
+
+    return Command.transformers.reply[commandName](newResult);
   }
   return result;
 }

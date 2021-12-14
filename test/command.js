@@ -35,7 +35,18 @@ describe('basic command', () => {
 describe('transformers', () => {
   it('should support setReplyTransformer', async () => {
     const redis = new Redis();
-    Redis.Command.setReplyTransformer('hgetall', result => Object.entries(result));
+
+    Redis.Command.setReplyTransformer('hgetall', result => {
+      expect(Array.isArray(result)).toBeTruthy();
+      expect(result.length).toEqual(4);
+
+      const arr = [];
+      for (let i = 0; i < result.length; i += 2) {
+        arr.push([String(result[i]), String(result[i + 1])]);
+      }
+      return arr;
+    });
+
     await redis.hset('replytest', 'bar', 'baz');
     await redis.hset('replytest', 'baz', 'quz');
     expect(await redis.hgetall('replytest')).toEqual([['bar', 'baz'], ['baz', 'quz']]);
