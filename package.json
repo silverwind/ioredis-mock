@@ -1,5 +1,5 @@
 {
-  "name": "ioredis-mock",
+  "name": "@silverwind/ioredis-mock",
   "description": "This library emulates ioredis by performing all operations in-memory.",
   "license": "MIT",
   "author": "Cody Olsen <stipsan@gmail.com>",
